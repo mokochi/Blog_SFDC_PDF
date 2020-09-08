@@ -1,0 +1,419 @@
+<!-- 帳票(請求書) -->
+<apex:page controller="CntrlClaimBill" sidebar="false" showHeader="false" applyBodyTag="false" renderAs="pdf" tabStyle="LogiMngSys__tab" LightningStylesheets="true">
+<head>
+    <title>請求書</title>
+
+    <style>
+        body { 
+            font-family:Arial Unicode MS; 
+        }
+        @page {
+            size:A4 portrait;
+            margin-left:10mm;
+            margin-top:5mm;
+            margin-right:5mm;
+            margin-bottom:5mm;
+        }
+        @media print {
+            body {}
+        }
+        @media screen {
+        }
+        .pagebreak {
+            page-break-before:always;
+        }
+    </style>
+</head>
+
+<body>
+<apex:variable value="{!0}" var="pageCnt"/>
+
+<!-- 請求書の鏡表示 -->
+<apex:outputPanel rendered="{!NOT(ISBLANK(dspMirrorDto))}">
+    <!-- ヘッダー(タイトル、請求年月、請求番号) -->
+    <div style="width:100%; text-align:right;">
+        <table style="width:100%;">
+            <tr>
+                <td style="width:80%; text-align:center; padding-left:400px;">
+                    <table>
+                        <tr>
+                            <td>
+                                <apex:outputText value="請　求　書" style="font-size:1.6em; font-weight:bold; border-bottom:1px solid #000000;"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:center; font-size:1.0em;">
+                                {!LEFT(dspMirrorDto.claimYearMonth, 4) + '年 ' + RIGHT(dspMirrorDto.claimYearMonth, 2) + '月分 '}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="width:20%; text-align:right; vertical-align:middle;">
+                    <apex:outputText value="No.　　　－　　　　" style="font-size:0.8em;  border-bottom:1px solid #000000;"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 請求元情報 -->
+    <div style="width:100%; font-size:0.8em; margin-left:65%; margin-top:20px;">
+        <!-- イメージファイルの表示 -->
+        <div style="text-align:left;">
+            <apex:image url="{!companyLogoUrl}" rendered="{!NOT(ISBLANK(companyLogoUrl))}"/>
+        </div>
+
+        <br/>
+        <div style="font-size:1.2em;">{!org.Name}</div>
+        <div> <span>〒 {!org.PostalCode__c} </span> <span> {!org.State__c}{!org.City__c}{!org.Street__c}</span> </div>
+        <div><span>TEL {!org.Phone__c}</span>　<span style="margin-left:10px;">FAX {!org.Fax__c}</span></div>
+    </div>
+
+    <!-- 請求金額、請求一案-->
+    <div style="text-align:left; margin-top:30px;">
+        <span style="width:500px; border-bottom:1px solid #000000;">
+            <apex:outputText value="　ご請求金額：" style="font-size:1.1em; font-weight:bold; text-aling:center;"/>
+            <apex:outputText value="¥ {0, number, ###,###,###,##0}　" style="font-size:1.1em; font-weight:bold; text-aling:center;">
+                <apex:param value="{!dspMirrorDto.totalClaimAmount}"/>
+            </apex:outputText>
+        </span>
+    </div>
+
+    <!-- 請求一覧 -->
+    <div style="width:100%; font-size:0.8em; text-align:center; margin-top:10px;">
+        <table cellpadding="3" cellspacing="0">
+            <!-- ヘッダー -->
+            <tr>
+                <th style="width:3%; border-left:2px solid black; border-top:2px solid black; border-bottom:1px solid black;">No</th>
+                <th style="width:25%; border-left:2px solid black; border-top:2px solid black; border-bottom:1px solid black;">請求番号</th>
+                <th style="width:45%; border-left:2px solid black; border-top:2px solid black; border-bottom:1px solid black;">得意先名</th>
+                <th style="width:27%; border-left:2px solid black; border-top:2px solid black; border-right:2px solid black; border-bottom:1px solid black;">金額</th>
+            </tr>
+
+            <!-- 請求一覧表示 -->
+            <apex:variable value="{!0}" var="claimCnt"/>
+            <apex:repeat value="{!dspMirrorDto.claimList}" var="mirrorClm">
+                <apex:variable value="{!claimCnt + 1}" var="claimCnt"/>
+
+                <!-- ヘッダー -->
+                <tr style="page-break-inside:avoid;">
+                    <td style="width:3%; border-left:2px solid black; border-top:1px solid black; border-bottom:1px solid black;">{!claimCnt}</td>
+                    <td style="width:25%; border-left:2px solid black; border-top:1px solid black; border-bottom:1px solid black; text-align:left;">{!mirrorClm.ClaimNumber__c}</td>
+                    <td style="width:45%; border-left:2px solid black; border-top:1px solid black; border-bottom:1px solid black; text-align:left;">
+                        <apex:outputText value="{!mirrorClm.Contact__r.Account.Name}"/>
+                        <apex:outputText value="({!mirrorClm.Contact__r.CustomerCode__c})" rendered="{!NOT(ISBLANK(mirrorClm.Contact__r.CustomerCode__c))}"/>
+                    </td>
+                    <td style="width:27%; border-left:2px solid black; border-top:1px solid black; border-bottom:1px solid black; border-right:2px solid black; text-align:right;">
+                        <apex:outputText value="{0, number, ###,###,###,##0}">
+                            <apex:param value="{!mirrorClm.TotalClaimAmount__c}"/>
+                        </apex:outputText>
+                    </td>
+                </tr>
+            </apex:repeat>
+        </table>
+    </div>
+
+    <!-- 請求書の鏡表示後、改ページ -->
+    <p class="pagebreak"/>
+</apex:outputPanel>
+
+<!-- 請求書表示 -->
+<apex:repeat value="{!dspClaimBillDtoList}" var="claimBillDto">
+    <!-- ヘッダー(タイトル、請求日、請求番号) -->
+    <div style="width:100%; text-align:right;">
+        <table style="width:100%;">
+            <tr>
+                <td style="width:80%; text-align:center; padding-left:400px;">
+                    <table>
+                        <tr>
+                            <td>
+                                <apex:outputText value="請　求　書" style="font-size:1.6em; font-weight:bold; border-bottom:1px solid #000000;"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:center; font-size:1.0em;">
+                                {!LEFT(claimBillDto.claim.ClaimYearMonth__c, 4) + '年 ' + RIGHT(claimBillDto.claim.ClaimYearMonth__c, 2) + '月分 '}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="width:20%; text-align:right; vertical-align:middle;">
+                    <apex:outputText value="No. {!claimBillDto.claim.ClaimNumber__c}" style="font-size:0.8em;  border-bottom:1px solid #000000;"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 請求元、請求先情報 -->
+    <div>
+        <apex:pageBlock mode="edit">
+            <apex:pageBlockSection columns="1" showHeader="false">
+                <apex:pageBlockSectionItem >
+                    <apex:outputPanel >
+                        <div style="text-align:left; font-size:0.8em; position:relative; left:40px; bottom:70px;">
+                            <table style="margin-right:auto;">
+                                <tr>
+                                    <td>
+                                        <apex:outputText value="〒 {!claimBillDto.claim.Contact__r.MailingPostalCode}" rendered="{!NOT(ISBLANK(claimBillDto.claim.Contact__r.MailingPostalCode))}"/>
+                                        <apex:outputText rendered="{!ISBLANK(claimBillDto.claim.Contact__r.MailingPostalCode)}">&nbsp;</apex:outputText>
+                                        </td>
+                                </tr>
+                                <tr>
+                                    <td>{!claimBillDto.claim.Contact__r.MailingState}{!claimBillDto.claim.Contact__r.MailingCity}{!claimBillDto.claim.Contact__r.MailingStreet}</td>
+                                </tr>
+                                <tr>
+                                    <td>&nbsp;</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <apex:outputText value="{!claimBillDto.claim.Contact__r.Account.Name}　御中" style="font-size:1.1em;"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style="position:relative; left:30px; top:30px;">
+                            <table style="width:200px; position:relative; border-collapse:collapse;" cellpadding="4">
+                                <tr>
+                                    <td style="font-size:0.8em; border-left:1px solid #000000; border-top:1px solid #000000; border-right:1px solid #000000;">
+                                        <apex:outputText value="請求期間"/>
+                                    </td>
+                                    <td style="font-size:0.8em; border-top:1px solid #000000; border-right:1px solid #000000;">
+                                        <apex:outputText value="{!TEXT(YEAR(claimBillDto.claim.ClaimStartDate__c)) + '/' + LPAD(TEXT(MONTH(claimBillDto.claim.ClaimStartDate__c)), 2, '0') + '/' + LPAD(TEXT(DAY(claimBillDto.claim.ClaimStartDate__c)), 2, '0')}" rendered="{!NOT(ISBLANK(claimBillDto.claim.ClaimStartDate__c))}"/>
+                                        <apex:outputText value="～" rendered="{!NOT(ISBLANK(claimBillDto.claim.ClaimStartDate__c))}"/>
+                                        <apex:outputText value="{!TEXT(YEAR(claimBillDto.claim.ClaimEndDate__c)) + '/' + LPAD(TEXT(MONTH(claimBillDto.claim.ClaimEndDate__c)), 2, '0') + '/' + LPAD(TEXT(DAY(claimBillDto.claim.ClaimEndDate__c)), 2, '0')}" rendered="{!NOT(ISBLANK(claimBillDto.claim.ClaimStartDate__c))}"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:0.8em; border-left:1px solid #000000; border-top:1px solid #000000; border-right:1px solid #000000; border-bottom:1px solid #000000;">
+                                        <apex:outputText value="請求日"/>
+                                    </td>
+                                    <td style="font-size:0.8em; border-top:1px solid #000000; border-right:1px solid #000000; border-bottom:1px solid #000000;">
+                                        <apex:outputText value="{!TEXT(YEAR(claimBillDto.claim.ClaimDate__c)) + '/' + LPAD(TEXT(MONTH(claimBillDto.claim.ClaimDate__c)), 2, '0') + '/' + LPAD(TEXT(DAY(claimBillDto.claim.ClaimDate__c)), 2, '0')}" rendered="{!NOT(ISBLANK(claimBillDto.claim.ClaimDate__c))}"/>
+                                    </td>
+                                </tr>
+<!-- 
+                                <tr>
+                                    <td style="font-size:0.8em; border-left:1px solid #000000; border-top:1px solid #000000; border-right:1px solid #000000; border-bottom:1px solid #000000;">
+                                        <apex:outputText value="発行日"/>
+                                    </td>
+                                    <td style="font-size:0.8em; border-top:1px solid #000000; border-right:1px solid #000000; border-bottom:1px solid #000000;">
+                                        <apex:outputText value="{!TEXT(YEAR(claimBillDto.claim.InvoiceDate__c)) + '/' + LPAD(TEXT(MONTH(claimBillDto.claim.InvoiceDate__c)), 2, '0') + '/' + LPAD(TEXT(DAY(claimBillDto.claim.InvoiceDate__c)), 2, '0')}" rendered="{!NOT(ISBLANK(claimBillDto.claim.InvoiceDate__c))}"/>
+                                    </td>
+                                </tr>
+ -->
+                            </table>
+                        </div>
+                    </apex:outputPanel>
+
+                    <apex:outputPanel >
+                        <div style="text-align:left; font-size:0.8em; margin-left:250px; margin-top:10px;">
+                            <!-- イメージファイルの表示 -->
+                            <div style="text-align:left;">
+                                <apex:image url="{!companyLogoUrl}" rendered="{!NOT(ISBLANK(companyLogoUrl))}"/>
+                            </div>
+
+                            <br/>
+                            <div style="font-size:1.2em;">{!org.Name}</div>
+                            <div> <span>〒 {!org.PostalCode__c} </span> <span> {!org.State__c}{!org.City__c}{!org.Street__c}</span> </div>
+                            <div><span>TEL {!org.Phone__c}</span>　<span style="margin-left:10px;">FAX {!org.Fax__c}</span></div>
+                            <br/>
+                            <div><span>{!claimBillDto.ownBank.Name}</span>　<span style="margin-left:5px;">{!claimBillDto.ownBank.BranchName__c}</span>　<span>{!claimBillDto.ownBank.BankAccountType__c}</span>　<span>{!claimBillDto.ownBank.BankAccountNumber__c}</span></div>
+                            <div>{!claimBillDto.ownBank.BankAccountName__c}</div>
+                        </div>
+                    </apex:outputPanel>
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+    </div>
+    <br/>
+
+    <!-- 請求金額、決済期日 -->
+    <div style="text-align:left; margin-top:30px;">
+        <span style="width:500px; border-bottom:1px solid #000000;">
+            <apex:outputText value="　ご請求金額：" style="font-size:1.1em; font-weight:bold; text-aling:center;"/>
+            <apex:outputText value="¥ {0, number, ###,###,###,##0}　" style="font-size:1.1em; font-weight:bold; text-aling:center;">
+                <apex:param value="{!claimBillDto.claim.TotalClaimAmount__c}"/>
+            </apex:outputText>
+        </span>
+<!-- 
+        <span style="text-align:left; font-size:0.8em; margin-left:10px;">
+            <apex:outputText value="決済期日 : "/>
+            <apex:outputText value="{!TEXT(YEAR(claimBillDto.claim.PayDeadline__c)) + '年 ' + LPAD(TEXT(MONTH(claimBillDto.claim.PayDeadline__c)),2,'0') + '月 ' + LPAD(TEXT(DAY(claimBillDto.claim.PayDeadline__c)),2,'0') + '日'}" rendered="{!NOT(ISBLANK(claimBillDto.claim.PayDeadline__c))}"/>
+        </span>
+ -->
+    </div>
+
+    <!-- 請求明細 -->
+    <div style="width:100%; font-size:0.8em; text-align:center; margin-top:10px;">
+<!--         <table style="-fs-table-paginate:paginate;" cellpadding="3" cellspacing="0"> -->
+        <table cellpadding="3" cellspacing="0">
+            <!-- ヘッダー -->
+            <tr>
+                <th style="width:3%; border-left:2px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">No</th>
+                <th style="width:6%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">月日</th>
+                <th style="width:17%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">ドライバー</th>
+                <th style="width:33%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">作業明細</th>
+                <th style="width:9%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">立替金</th>
+                <th style="width:9%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">単価</th>
+                <th style="width:7%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">数量</th>
+                <th style="width:6%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">単位</th>
+                <th style="width:10%; border-left:1px solid black; border-top:2px solid black; border-right:2px solid black; border-bottom:1px solid black;">金額</th>
+            </tr>
+
+            <!-- 請求明細表示 -->
+            <apex:variable value="{!0}" var="claimDetailCnt"/>
+            <apex:repeat value="{!claimBillDto.claimDetailDtoList}" var="claimDetail">
+                <apex:variable value="{!claimDetailCnt + 1}" var="claimDetailCnt"/>
+
+                <!-- ヘッダー -->
+                <tr style="page-break-inside:avoid;">
+                    <td style="width:3%; border-left:2px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black;">{!claimDetailCnt}</td>
+                    <td style="width:6%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black;">{!claimDetail.monthDay}</td>
+                    <td style="width:17%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; text-align:left; font-size:0.9em;">
+                        <apex:outputText value="{!claimDetail.driverName}" rendered="{!NOT(ISBLANK(claimDetail.driverName))}"/>
+                        <apex:outputText value="{!claimDetail.coopName}" rendered="{!ISBLANK(claimDetail.driverName)}"/>
+                    </td>
+                    <td style="width:33%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; text-align:left; font-size:0.9em;">
+                        <!-- 1行目：作業内容、荷受先・荷届先情報 -->
+                        <apex:outputText value="{!claimDetail.workContents}"/>
+                        <apex:outputText value="【{!claimDetail.loadedName} ～ {!claimDetail.unloadedName}】" rendered="{!AND(NOT(ISBLANK(claimDetail.loadedName)), NOT(ISBLANK(claimDetail.unloadedName)))}"/>
+                        <br/>
+                        <!-- 2行目：立替仕訳(「、」区切り) -->
+                        <apex:outputText value="{!claimDetail.advancePays}"/>
+                    </td>
+                    <td style="width:9%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; text-align:right;">
+                        <apex:outputText value="{0, number, ###,###,###,##0}">
+                            <apex:param value="{!claimDetail.advancePay}"/>
+                        </apex:outputText>
+                    </td>
+                    <td style="width:9%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; text-align:right;">
+                        <apex:outputText value="{0, number, ###,###,###,##0}">
+                            <apex:param value="{!claimDetail.cost}"/>
+                        </apex:outputText>
+                    </td>
+                    <td style="width:7%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; text-align:right;">{!claimDetail.quantity}</td>
+                    <td style="width:6%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black;">{!claimDetail.unit}</td>
+                    <td style="width:10%; border-left:1px solid black; border-top:1px solid black; border-right:2px solid black; border-bottom:1px solid black; text-align:right;">
+                        <apex:outputText value="{0, number, ###,###,###,##0}">
+                            <apex:param value="{!claimDetail.amount}"/>
+                        </apex:outputText>
+                    </td>
+                </tr>
+            </apex:repeat>
+
+            <!-- 備考、小計、合計 -->
+            <tr style="page-break-inside:avoid;">
+                <td style="width:74%; border-left:2px solid black; border-bottom:2px solid black; border-top:1px solid black; border-right:1px solid black; vertical-align:top; text-align:left;" colspan="6" rowspan="4">(備考)</td>
+                <td style="width:13%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black;" colspan="2">課税対象小計</td>
+                <td style="width:13%; border-top:1px solid black; border-right:2px solid black; text-align:right;">
+                    <apex:outputText value="{0, number, ###,###,###,##0}">
+                        <apex:param value="{!claimBillDto.claim.TotalTaxableAmount__c}"/>
+                    </apex:outputText>
+                </td>
+            </tr>
+            <tr>
+                <td style="width:13%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black;" colspan="2">消費税</td>
+                <td style="width:13%; border-top:1px solid black; border-right:2px solid black; text-align:right;">
+                    <apex:outputText value="{0, number, ###,###,###,##0}">
+                        <apex:param value="{!claimBillDto.claim.ConsumptionTax__c}"/>
+                    </apex:outputText>
+                </td>
+            </tr>
+            <tr>
+                <td style="width:13%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black;" colspan="2">立替金小計</td>
+                <td style="width:13%; border-top:1px solid black; border-right:2px solid black; text-align:right;">
+                    <apex:outputText value="{0, number, ###,###,###,##0}">
+                        <apex:param value="{!claimBillDto.advancePayDto.totalAdvancePayAmount}"/>
+                    </apex:outputText>
+                </td>
+            </tr>
+            <tr>
+                <td style="width:13%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:2px solid black;" colspan="2">合計</td>
+                <td style="width:13%; border-top:1px solid black; border-right:2px solid black; border-bottom:2px solid black; text-align:right;">
+                    <apex:outputText value="{0, number, ###,###,###,##0}">
+<!--                         <apex:param value="{!claimBillDto.claim.TotalClaimAmount__c}"/> -->
+                        <apex:param value="{!claimBillDto.claim.TotalTaxableAmount__c + claimBillDto.claim.ConsumptionTax__c + claimBillDto.advancePayDto.totalAdvancePayAmount}"/>
+                    </apex:outputText>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 立替金一覧 -->
+<!--     <apex:outputPanel rendered="{!claimBillDto.advancePayDto.adPayItemDtoList.size > 0}"> -->
+    <apex:outputPanel rendered="false">
+        <p class="pagebreak"/>
+        <div style="text-align:left; margin-top:20px;">
+            <span style="width:500px; border-bottom:1px solid #000000;">
+                <apex:outputText value="立替明細" style="font-size:1.1em; font-weight:bold; text-aling:center;"/>
+<!--             <apex:outputText value="{0, number, ###,###,###,##0}" style="font-size:1.1em; font-weight:bold; text-aling:center;"> -->
+<!--                 <apex:param value="{!claimBillDto.advancePayDto.totalAdvancePayAmount}"/> -->
+<!--             </apex:outputText> -->
+            </span>
+        </div>
+        <div style="width:100%; font-size:0.8em; text-align:center; margin-top:10px;">
+            <table cellspacing="0" cellpadding="4">
+                <apex:variable value="{!0}" var="adPayCnt"/>
+
+                <!-- ヘッダー -->
+                <tr>
+                    <td style="width:3%; border-left:2px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">No</td>
+                    <td style="width:6%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">月日</td>
+                    <td style="width:20%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">ドライバー</td>
+                    <td style="width:33%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">作業明細</td>
+                    <td style="width:28%; border-left:1px solid black; border-top:2px solid black; border-right:1px solid black; border-bottom:1px solid black;">立替内容</td>
+                    <td style="width:10%; border-left:1px solid black; border-top:2px solid black; border-right:2px solid black; border-bottom:1px solid black;">金額</td>
+                </tr>
+
+                <apex:repeat value="{!claimBillDto.advancePayDto.adPayItemDtoList}" var="adPayItemDto">
+                    <apex:variable value="{!adPayCnt + 1}" var="adPayCnt"/>
+
+                    <tr>
+                        <td style="width:3%; border-left:2px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black;">{!adPayCnt}</td>
+                        <td style="width:6%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black;">{!adPayItemDto.claimDetailDto.monthDay}</td>
+                        <td style="width:20%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black;">
+                            <apex:outputText value="{!adPayItemDto.claimDetailDto.driverName}" rendered="{!NOT(ISBLANK(adPayItemDto.claimDetailDto.driverName))}"/>
+                            <apex:outputText value="{!adPayItemDto.claimDetailDto.coopName}" rendered="{!ISBLANK(adPayItemDto.claimDetailDto.driverName)}"/>
+                        </td>
+                        <td style="width:33%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; vertical-align:top; text-align:left;">
+                            <apex:outputText value="{!adPayItemDto.claimDetailDto.workContents}"/>
+                            <apex:outputText value="【{!adPayItemDto.claimDetailDto.loadedName} ～ {!adPayItemDto.claimDetailDto.unloadedName}】" rendered="{!AND(NOT(ISBLANK(adPayItemDto.claimDetailDto.loadedName)), NOT(ISBLANK(adPayItemDto.claimDetailDto.unloadedName)))}"/>
+                            <br/>
+                            &nbsp;
+                            <br/>&nbsp;
+                        </td>
+                        <td style="width:28%; border-left:1px solid black; border-top:1px solid black; border-right:1px solid black; border-bottom:1px solid black; vertical-align:top; text-align:left;">{!adPayItemDto.advancePay.ItemName__c}</td>
+                        <td style="width:10%; border-left:1px solid black; border-top:1px solid black; border-right:2px solid black; border-bottom:1px solid black; text-align:right;">
+                            <apex:outputText value="{0, number, ###,###,###,##0}">
+                                <apex:param value="{!adPayItemDto.advancePay.Amount__c}"/>
+                            </apex:outputText>
+                        </td>
+                    </tr>
+                </apex:repeat>
+
+                <tr>
+                    <td style="width:62%; border-left:2px solid black; border-bottom:2px solid black; border-top:1px solid black; border-right:1px solid black; vertical-align:top; text-align:left;" colspan="4">(備考)</td>
+                    <td style="width:28%; border-left:1px solid black; border-top:1px solid black; border-bottom:2px solid black; border-right:1px solid black;">立替金小計</td>
+                    <td style="width:10%; border-left:1px solid black; border-top:1px solid black; border-right:2px solid black; border-bottom:2px solid black; text-align:right;">
+                        <apex:outputText value="{0, number, ###,###,###,##0}">
+                            <apex:param value="{!claimBillDto.advancePayDto.totalAdvancePayAmount}"/>
+                        </apex:outputText>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </apex:outputPanel>
+
+    <!-- イメージファイルの表示 -->
+<!-- 
+    <div style="text-align: right; position: absolute; top:80px; left:490px;">
+        <apex:image url="{!companyLogoUrl}" rendered="{!NOT(ISBLANK(companyLogoUrl))}"/>
+    </div>
+ -->
+    <!-- 請求ごとに改ページ -->
+    <apex:variable value="{!pageCnt + 1}" var="pageCnt"/>
+    <apex:outputPanel rendered="{!dspClaimBillDtoList.size > pageCnt}">
+        <p class="pagebreak"/>
+    </apex:outputPanel>
+</apex:repeat>
+</body>
+</apex:page>
